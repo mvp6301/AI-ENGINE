@@ -1,16 +1,23 @@
 
 from gtts import gTTS
+import fitz
 import os
 import cv2
 import pytesseract
 from PyPDF2 import PdfReader
 from docx import Document
-import io
-import base64
+from playsound import playsound 
 import langid
 from pydub import AudioSegment
+from pydub import AudioSegment
 
-from io import BytesIO
+# Specify the path to the ffmpeg executable
+ffmpeg_path = '\config\ffmpeg'
+
+# Set the ffmpeg path
+AudioSegment.converter = ffmpeg_path
+
+
 
 class audioprocess:
 
@@ -23,13 +30,18 @@ class audioprocess:
 
     @staticmethod
     def extract_text_from_pdf(pdf_path):
-        with open(pdf_path, 'rb') as file:
-            pdf_reader = PdfReader(file)
-            text = ""
-            for page_num in range(len(pdf_reader.pages)):
-                page = pdf_reader.pages[page_num]
-                text += page.extract_text()
-            return text
+        text = ""
+        try:
+            pdf_document = fitz.open(pdf_path)
+            for page_num in range(pdf_document.page_count):
+                page = pdf_document[page_num]
+                text += page.get_text()
+        except Exception as e:
+            print(f"Error extracting text from PDF: {e}")
+        finally:
+            if pdf_document:
+                pdf_document.close()
+        return text
 
     @staticmethod
     def extract_text_from_text_file(text_file_path):
@@ -49,11 +61,19 @@ class audioprocess:
 
     @staticmethod
     def text_to_speech(text, language):
-        tts = gTTS(text=text, lang=language, slow=False)
-        audio_buffer = BytesIO()
-        tts.write_to_fp(audio_buffer)
-        audio_data = AudioSegment.from_mp3(audio_buffer)
-        return audio_data
+        try:
+            # Create a gTTS object
+            tts = gTTS(text=text, lang=language, slow=False)
+
+            # Save the audio file
+            audio_file_path = "output_audio.mp3"
+            tts.save(audio_file_path)
+
+            # Play the generated audio
+            playsound(audio_file_path)
+
+        except Exception as e:
+            print(f"Error during text-to-speech conversion: {e}")
 
     @staticmethod
     def detect_language(text):
@@ -88,13 +108,14 @@ class audioprocess:
 
 
 def main():
-    file_path = "312079761-Telugu-Kavithalu.pdf"
+    file_path = "documents\\test_documents\\A 25.pdf"
     text = audioprocess.process_file(file_path)
+   
 
     if text:
         target_language =audioprocess.detect_language(text)
         print(target_language)
-        audio_data = audioprocess.text_to_speech(text, target_language)
+        audioprocess.text_to_speech(text, target_language)
 
         # Save the audio file temporarily
         
